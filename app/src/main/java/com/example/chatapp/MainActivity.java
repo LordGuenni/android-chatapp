@@ -20,8 +20,7 @@ public class MainActivity extends AbstractMessageSender {
 
         @Override
         public void sendOutput(String output) {
-            // writer.write(output);
-            writer.println(output);
+            writer.write(output);
         }
 
         @Override
