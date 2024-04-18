@@ -2,38 +2,43 @@ package com.example.chatapp;
 
 
 
+import android.health.connect.datatypes.ExerciseSegment;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import de.fhb.fbi.msr.maus.uebung1.chatapp.AbstractMessageSender;
 import de.fhb.fbi.msr.maus.uebung1.chatapp.PushClient;
 
 import java.io.PrintWriter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends AbstractMessageSender {
 
-    private class IOHandler implements PushClient.IOHandler {
-        private PrintWriter writer;
-        @Override
-        public void displayInput(String input) {
-            updateConversation(input);
-        }
+    private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-        @Override
-        public void sendOutput(String output) {
-            writer.write(output);
-        }
-
-        @Override
-        public void setOutputWriter(PrintWriter writer) {
-            this.writer = writer;
-        }
-    }
-    private IOHandler ioHandler = new IOHandler();
+    private PushClient.IOHandler mIOHandler;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        PushClient client = new PushClient(ioHandler);
-        client.connect();
+        mIOHandler = new PushClient.IOHandler(){
+            private PrintWriter mWriter;
+            @Override
+            public void displayInput(String input) {
+                updateConversation(input);
+            }
+
+            @Override
+            public void sendOutput(String output) {
+                mExecutor.execute(() -> mWriter.println(output));
+            }
+
+            @Override
+            public void setOutputWriter(PrintWriter writer) {
+                mWriter = writer;
+                }
+            };
+            mExecutor.execute(new PushClient(mIOHandler)::connect);
     }
 
     @Override
@@ -44,6 +49,6 @@ public class MainActivity extends AbstractMessageSender {
     @Override
     protected void processMessage(String message) {
         super.updateConversation(message);
-        ioHandler.sendOutput(message);
+        mIOHandler.sendOutput(message);
     }
 }
